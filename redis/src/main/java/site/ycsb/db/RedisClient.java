@@ -64,6 +64,46 @@ public class RedisClient extends DB {
 
   public static final String INDEX_KEY = "_indices";
 
+
+  private static final int MAX_RETRIES = 20;
+  private static final long RETRY_DELAY_MS = 500;
+
+  @FunctionalInterface
+  private interface RedisCommand<T> {
+    T run(JedisCommands jedis) throws Exception;
+  }
+
+  private<T> T runWithReconnect(RedisCommand<T> command) {
+    for (int i=0; i<MAX_RETRIES; i++){
+      try {
+        return command.run(jedis);
+      } catch(Exception e) {
+        System.err.println("Redis operation failed: " + e + ". Retrying" + (i+1) + "/" + MAX_RETRIES);
+        try {
+          Thread.sleep(RETRY_DELAY_MS);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException("Thread interrupted", ie);
+        }
+
+        // Attemp reconnect only if using raw Jedis
+        if (jedis instanceof Jedis) {
+          try {
+            ((Jedis) jedis).close();
+            ((Jedis) jedis).connect();
+          } catch (Exception ie) {
+            System.err.println("Redis reconnect failed: " + ie);
+          }
+        } else {
+          // For JedisCluster, we don't need to reconnect
+          // as it handles reconnections internally.
+        }
+      }
+    }
+    throw new RuntimeException("Redis Command Failed after max retries reached");
+  }
+
+
   public void init() throws DBException {
     Properties props = getProperties();
     int port;
@@ -121,11 +161,14 @@ public class RedisClient extends DB {
   public Status read(String table, String key, Set<String> fields,
       Map<String, ByteIterator> result) {
     if (fields == null) {
-      StringByteIterator.putAllAsByteIterators(result, jedis.hgetAll(key));
+      // StringByteIterator.putAllAsByteIterators(result, jedis.hgetAll(key));
+      Map<String, String> map = runWithReconnect(j -> j.hgetAll(key));
+      StringByteIterator.putAllAsByteIterators(result, map);
     } else {
       String[] fieldArray =
           (String[]) fields.toArray(new String[fields.size()]);
-      List<String> values = jedis.hmget(key, fieldArray);
+      // List<String> values = jedis.hmget(key, fieldArray);
+      List<String> values = runWithReconnect(j -> j.hmget(key, fieldArray));
 
       Iterator<String> fieldIterator = fields.iterator();
       Iterator<String> valueIterator = values.iterator();
@@ -142,9 +185,17 @@ public class RedisClient extends DB {
   @Override
   public Status insert(String table, String key,
       Map<String, ByteIterator> values) {
-    if (jedis.hmset(key, StringByteIterator.getStringMap(values))
-        .equals("OK")) {
-      jedis.zadd(INDEX_KEY, hash(key), key);
+    // if (jedis.hmset(key, StringByteIterator.getStringMap(values))
+    //     .equals("OK")) {
+    //   jedis.zadd(INDEX_KEY, hash(key), key);
+    //   return Status.OK;
+    // }
+    String response = runWithReconnect(j->j.hmset(key, StringByteIterator.getStringMap(values)));
+    if ("OK".equals(response)) {
+      runWithReconnect(j -> {
+          j.zadd(INDEX_KEY, hash(key), key);
+          return null;
+        });
       return Status.OK;
     }
     return Status.ERROR;
@@ -152,8 +203,13 @@ public class RedisClient extends DB {
 
   @Override
   public Status delete(String table, String key) {
-    return jedis.del(key) == 0 && jedis.zrem(INDEX_KEY, key) == 0 ? Status.ERROR
-        : Status.OK;
+
+    Long delResult = runWithReconnect(j->j.del(key));
+    Long zremResult = runWithReconnect(j->j.zrem(INDEX_KEY, key));
+
+    return delResult == 0 && zremResult == 0 ? Status.ERROR : Status.OK;
+    // return jedis.del(key) == 0 && jedis.zrem(INDEX_KEY, key) == 0 ? Status.ERROR
+    //     : Status.OK;
   }
 
   @Override
@@ -166,8 +222,11 @@ public class RedisClient extends DB {
   @Override
   public Status scan(String table, String startkey, int recordcount,
       Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
-    Set<String> keys = jedis.zrangeByScore(INDEX_KEY, hash(startkey),
-        Double.POSITIVE_INFINITY, 0, recordcount);
+    // Set<String> keys = jedis.zrangeByScore(INDEX_KEY, hash(startkey),
+    //     Double.POSITIVE_INFINITY, 0, recordcount);
+
+    Set<String> keys = runWithReconnect(j->j.zrangeByScore(INDEX_KEY, hash(startkey),
+        Double.POSITIVE_INFINITY, 0, recordcount));
 
     HashMap<String, ByteIterator> values;
     for (String key : keys) {
