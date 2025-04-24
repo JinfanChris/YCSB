@@ -210,7 +210,10 @@ public final class Client {
         out = System.out;
       } else {
         out = new FileOutputStream(exportFile);
+        System.out.println(
+            "Exporting results to " + exportFile + ". Use -exportfile to change this.");
       }
+
 
       // if no exporter is provided the default text one will be used
       String exporterStr = props.getProperty(
