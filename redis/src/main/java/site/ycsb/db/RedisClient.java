@@ -215,8 +215,13 @@ public class RedisClient extends DB {
   @Override
   public Status update(String table, String key,
       Map<String, ByteIterator> values) {
-    return jedis.hmset(key, StringByteIterator.getStringMap(values))
-        .equals("OK") ? Status.OK : Status.ERROR;
+    String response = runWithReconnect(j->j.hmset(key, StringByteIterator.getStringMap(values)));
+    if ("OK".equals(response)) {
+      return Status.OK;
+    }
+    return Status.ERROR;
+    // return jedis.hmset(key, StringByteIterator.getStringMap(values))
+    //     .equals("OK") ? Status.OK : Status.ERROR;
   }
 
   @Override
