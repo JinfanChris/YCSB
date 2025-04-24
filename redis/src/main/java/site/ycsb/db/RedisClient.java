@@ -78,7 +78,7 @@ public class RedisClient extends DB {
       try {
         return command.run(jedis);
       } catch(Exception e) {
-        System.err.println("Redis operation failed: " + e + ". Retrying" + (i+1) + "/" + MAX_RETRIES);
+        System.err.println("Redis operation failed: " + e + ". Retrying " + (i+1) + "/" + MAX_RETRIES);
         try {
           Thread.sleep(RETRY_DELAY_MS);
         } catch (InterruptedException ie) {
