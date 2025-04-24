@@ -369,14 +369,20 @@ def main():
     if command:
         ycsb_command.append(command)
     print(" ".join(ycsb_command), file=sys.stderr)
-    proc = subprocess.Popen(ycsb_command)
+    # Start subprocess with preexec_fn to make it run in a new process group
+    proc = subprocess.Popen(
+        ycsb_command,
+        preexec_fn=lambda: signal.signal(
+            signal.SIGINT, signal.SIG_IGN
+        ),  # child ignores SIGINT; parent handles it
+    )
 
     def signal_handler(signum, frame):
-        print("\n[INFO] Caught signal %d. Exiting..." % signum)
+        print(f"\n[INFO] Caught signal {signum}. Forwarding to child...")
         try:
             proc.send_signal(signum)
         except Exception as e:
-            print("[ERROR] Failed to send signal %d to process: %s" % (signum, e))
+            print(f"[ERROR] Failed to send signal {signum} to process: {e}")
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
