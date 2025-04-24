@@ -227,6 +227,7 @@ public final class Client {
 
       exporter.write("OVERALL", "RunTime(ms)", runtime);
       double throughput = 1000.0 * (opcount) / (runtime);
+      exporter.write("OVERALL", "Throughput(ops/sec): #" + (opcount) + "/" + (runtime)/1000.0 + "(s)", 0);
       exporter.write("OVERALL", "Throughput(ops/sec)", throughput);
 
       final Map<String, Long[]> gcs = Utils.getGCStatst();
@@ -296,6 +297,7 @@ public final class Client {
               }
             }));
     Properties props = parseArguments(args);
+    gprops = props;
     boolean status = Boolean.valueOf(props.getProperty(STATUS_PROPERTY, String.valueOf(false)));
     String label = props.getProperty(LABEL_PROPERTY, "");
     long maxExecutionTime = Integer.parseInt(props.getProperty(MAX_EXECUTION_TIME, "0"));
@@ -344,7 +346,6 @@ public final class Client {
       statusthread.start();
     }
 
-    gprops = props;
     Thread terminator = null;
     long en;
     int opsDone;
