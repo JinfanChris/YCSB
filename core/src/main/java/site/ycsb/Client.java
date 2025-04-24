@@ -267,6 +267,7 @@ public final class Client {
   private static volatile Properties gprops = null;
   private static volatile int gopsDone = 0;
   private static volatile long gstartTime = 0;
+  private static volatile Map<Thread, ClientThread>threads = null;
 
   @SuppressWarnings(
       "unchecked"
@@ -276,22 +277,7 @@ public final class Client {
   ) {
     Properties props = parseArguments(args);
     gprops = props;
-    boolean status = Boolean.valueOf(props.getProperty(STATUS_PROPERTY, String.valueOf(false)));
-    String label = props.getProperty(LABEL_PROPERTY, "");
-    long maxExecutionTime = Integer.parseInt(props.getProperty(MAX_EXECUTION_TIME, "0"));
-    // get number of threads, target and db
-    int threadcount = Integer.parseInt(props.getProperty(THREAD_COUNT_PROPERTY, "1"));
-    String dbname = props.getProperty(DB_PROPERTY, "site.ycsb.BasicDB");
-    int target = Integer.parseInt(props.getProperty(TARGET_PROPERTY, "0"));
-    // compute the target throughput
-    double targetperthreadperms = -1;
-    if (target > 0) {
-      double targetperthread = ((double) target) / ((double) threadcount);
-      targetperthreadperms = targetperthread / 1000.0;
-    }
-    long st = System.currentTimeMillis();
-    final Map<Thread, ClientThread> threads = new HashMap<>(threadcount);
-    gstartTime = st;
+
     Runtime.getRuntime().addShutdownHook(
             new Thread(() -> {
           try {
@@ -322,6 +308,23 @@ public final class Client {
             e.printStackTrace();
           }
         }));
+
+    boolean status = Boolean.valueOf(props.getProperty(STATUS_PROPERTY, String.valueOf(false)));
+    String label = props.getProperty(LABEL_PROPERTY, "");
+    long maxExecutionTime = Integer.parseInt(props.getProperty(MAX_EXECUTION_TIME, "0"));
+    // get number of threads, target and db
+    int threadcount = Integer.parseInt(props.getProperty(THREAD_COUNT_PROPERTY, "1"));
+    String dbname = props.getProperty(DB_PROPERTY, "site.ycsb.BasicDB");
+    int target = Integer.parseInt(props.getProperty(TARGET_PROPERTY, "0"));
+    // compute the target throughput
+    double targetperthreadperms = -1;
+    if (target > 0) {
+      double targetperthread = ((double) target) / ((double) threadcount);
+      targetperthreadperms = targetperthread / 1000.0;
+    }
+    long st = System.currentTimeMillis();
+    gstartTime = st;
+    threads = new HashMap<>(threadcount);
     Thread warningthread = setupWarningThread();
     warningthread.start();
     Measurements.setProperties(props);
