@@ -28,10 +28,10 @@ workload=site.ycsb.workloads.CoreWorkload
 
 readallfields=true
 
-readproportion=0.2
-updateproportion=0.3
-scanproportion=0.2
-insertproportion=0.3
+readproportion=0.8
+updateproportion=0.1
+scanproportion=0.1
+insertproportion=0
 
 requestdistribution=zipfian
 
