@@ -29,14 +29,14 @@ workload=site.ycsb.workloads.CoreWorkload
 # The number of characters in the "metric" or "key".
 fieldlength=1024
 
-measurementtype=raw
+# measurementtype=raw
 
 readallfields=true
 
-readproportion=0.8
+readproportion=0.9
 updateproportion=0.1
-scanproportion=0.04
-insertproportion=0.06
+scanproportion=0
+insertproportion=0
 
 requestdistribution=zipfian
 
