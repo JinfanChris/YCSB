@@ -96,6 +96,7 @@ public class RedisClient extends DB {
             ((Jedis) jedis).close();
             ((Jedis) jedis).connect();
             System.out.println("[" + LocalDateTime.now().format(formatter) + "] Redis connection Successful");
+            i = -1;
           } catch (Exception ie) {
             System.err.println("[" + LocalDateTime.now().format(formatter) + "] Redis reconnect failed: " + ie);
           }
