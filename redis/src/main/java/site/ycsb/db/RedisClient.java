@@ -47,6 +47,9 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 /**
  * YCSB binding for <a href="http://redis.io/">Redis</a>.
  *
@@ -73,12 +76,14 @@ public class RedisClient extends DB {
     T run(JedisCommands jedis) throws Exception;
   }
 
-  private<T> T runWithReconnect(RedisCommand<T> command) {
-    for (int i=0; i<MAX_RETRIES; i++){
+  private <T> T runWithReconnect(RedisCommand<T> command) {
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    for (int i = 0; i < MAX_RETRIES; i++) {
       try {
         return command.run(jedis);
-      } catch(Exception e) {
-        System.err.println("Redis operation failed: " + e + ". Retrying" + (i+1) + "/" + MAX_RETRIES);
+      } catch (Exception e) {
+        System.err.println("[" + LocalDateTime.now().format(formatter) +
+            "] Redis operation failed: " + e + ". Retrying " + (i + 1) + "/" + MAX_RETRIES);
         try {
           Thread.sleep(RETRY_DELAY_MS);
         } catch (InterruptedException ie) {
@@ -86,22 +91,49 @@ public class RedisClient extends DB {
           throw new RuntimeException("Thread interrupted", ie);
         }
 
-        // Attemp reconnect only if using raw Jedis
         if (jedis instanceof Jedis) {
           try {
             ((Jedis) jedis).close();
             ((Jedis) jedis).connect();
+            System.out.println("[" + LocalDateTime.now().format(formatter) + "] Redis connection Successful");
           } catch (Exception ie) {
-            System.err.println("Redis reconnect failed: " + ie);
+            System.err.println("[" + LocalDateTime.now().format(formatter) + "] Redis reconnect failed: " + ie);
           }
-        } else {
-          // For JedisCluster, we don't need to reconnect
-          // as it handles reconnections internally.
         }
       }
     }
     throw new RuntimeException("Redis Command Failed after max retries reached");
   }
+
+  // private<T> T runWithReconnect(RedisCommand<T> command) {
+  //   for (int i=0; i<MAX_RETRIES; i++){
+  //     try {
+  //       return command.run(jedis);
+  //     } catch(Exception e) {
+  //       System.err.println("Redis operation failed: " + e + ". Retrying" + (i+1) + "/" + MAX_RETRIES);
+  //       try {
+  //         Thread.sleep(RETRY_DELAY_MS);
+  //       } catch (InterruptedException ie) {
+  //         Thread.currentThread().interrupt();
+  //         throw new RuntimeException("Thread interrupted", ie);
+  //       }
+  //
+  //       // Attemp reconnect only if using raw Jedis
+  //       if (jedis instanceof Jedis) {
+  //         try {
+  //           ((Jedis) jedis).close();
+  //           ((Jedis) jedis).connect();
+  //         } catch (Exception ie) {
+  //           System.err.println("Redis reconnect failed: " + ie);
+  //         }
+  //       } else {
+  //         // For JedisCluster, we don't need to reconnect
+  //         // as it handles reconnections internally.
+  //       }
+  //     }
+  //   }
+  //   throw new RuntimeException("Redis Command Failed after max retries reached");
+  // }
 
 
   public void init() throws DBException {
