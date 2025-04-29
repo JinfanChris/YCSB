@@ -112,6 +112,8 @@ public class RedisClient extends DB {
     JedisCommands temp = jedis;
     jedis = jedis2;
     jedis2 = temp;
+
+    ((Jedis) jedis).connect();
   }
 
   // private<T> T runWithReconnect(RedisCommand<T> command) {
