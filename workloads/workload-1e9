@@ -40,3 +40,5 @@ insertproportion=0
 
 requestdistribution=zipfian
 
+histogram.buckets=100
+timeseries.granularity=100
