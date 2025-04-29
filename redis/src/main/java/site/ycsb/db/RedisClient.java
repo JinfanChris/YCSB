@@ -115,7 +115,7 @@ public class RedisClient extends DB {
       }
     }
     System.out.println("[" + LocalDateTime.now().format(formatter) + "] Reconnecting to Redis");
-    // jedis=null;
+    jedis = null;
     init();
   }
 
