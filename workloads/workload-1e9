@@ -33,8 +33,8 @@ fieldlength=1024
 
 readallfields=true
 
-readproportion=0.9
-updateproportion=0.1
+readproportion=1
+updateproportion=0
 scanproportion=0
 insertproportion=0
 
