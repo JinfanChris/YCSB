@@ -58,8 +58,8 @@ import java.time.format.DateTimeFormatter;
 public class RedisClient extends DB {
 
   private JedisCommands jedis;
-  private JedisCommands jedis1;
-  private JedisCommands jedis2;
+  // private JedisCommands jedis1;
+  // private JedisCommands jedis2;
 
   public static final String HOST_PROPERTY = "redis.host";
   public static final String PORT_PROPERTY = "redis.port";
@@ -109,11 +109,11 @@ public class RedisClient extends DB {
   }
 
   public void reconnect() throws DBException {
-    JedisCommands temp = jedis1;
-    jedis1 = jedis2;
-    jedis2 = temp;
+    // JedisCommands temp = jedis1;
+    // jedis1 = jedis2;
+    // jedis2 = temp;
 
-    jedis = jedis1;
+    // jedis = jedis1;
     System.out.println("Reconnecting to Redis server...");
     ((Jedis) jedis).connect();
   }
@@ -174,14 +174,14 @@ public class RedisClient extends DB {
       String redisTimeout = props.getProperty(TIMEOUT_PROPERTY);
       if (redisTimeout != null){
         System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with timeout: " + redisTimeout);
-        jedis1 = new Jedis(host, port, Integer.parseInt(redisTimeout));
-        jedis2 = new Jedis(host2, port, Integer.parseInt(redisTimeout));
+        jedis = new Jedis(host, port, Integer.parseInt(redisTimeout));
+        // jedis2 = new Jedis(host2, port, Integer.parseInt(redisTimeout));
       } else {
         System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with: " + host+":"+portString);
-        jedis1 = new Jedis(host, port);
-        jedis2 = new Jedis(host2, port);
+        jedis = new Jedis(host, port);
+        // jedis2 = new Jedis(host2, port);
       }
-      jedis = jedis1;
+      // jedis = jedis1;
       ((Jedis) jedis).connect();
     }
 
