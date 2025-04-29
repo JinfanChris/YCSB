@@ -69,7 +69,7 @@ public class RedisClient extends DB {
 
 
   private static final int MAX_RETRIES = 20;
-  private static final long RETRY_DELAY_MS = 500;
+  private static final long RETRY_DELAY_MS = 1000;
 
   @FunctionalInterface
   private interface RedisCommand<T> {
@@ -108,11 +108,7 @@ public class RedisClient extends DB {
   public void reconnect() throws DBException {
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     if (jedis != null) {
-      try {
-        ((Jedis) jedis).close();
-      } catch (Exception e) {
-        throw new DBException("Closing connection failed." + e);
-      }
+      cleanup();
     }
     System.out.println("[" + LocalDateTime.now().format(formatter) + "] Reconnecting to Redis");
     jedis = null;
@@ -172,8 +168,10 @@ public class RedisClient extends DB {
     } else {
       String redisTimeout = props.getProperty(TIMEOUT_PROPERTY);
       if (redisTimeout != null){
+        System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with timeout: " + redisTimeout);
         jedis = new Jedis(host, port, Integer.parseInt(redisTimeout));
       } else {
+        System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with: " + host+":"+portString);
         jedis = new Jedis(host, port);
       }
       ((Jedis) jedis).connect();
