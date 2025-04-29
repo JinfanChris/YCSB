@@ -93,8 +93,7 @@ public class RedisClient extends DB {
 
         if (jedis instanceof Jedis) {
           try {
-            ((Jedis) jedis).close();
-            ((Jedis) jedis).connect();
+            reconnect();
             System.out.println("[" + LocalDateTime.now().format(formatter) + "] Redis connection Successful");
             i = -1;
           } catch (Exception ie) {
@@ -104,6 +103,17 @@ public class RedisClient extends DB {
       }
     }
     throw new RuntimeException("Redis Command Failed after max retries reached");
+  }
+
+  public void reconnect() throws DBException {
+    if (jedis != null) {
+      try {
+        ((Jedis) jedis).close();
+      } catch (Exception e) {
+        throw new DBException("Closing connection failed." + e);
+      }
+    }
+    init();
   }
 
   // private<T> T runWithReconnect(RedisCommand<T> command) {
