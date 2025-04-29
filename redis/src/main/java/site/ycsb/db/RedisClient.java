@@ -106,6 +106,7 @@ public class RedisClient extends DB {
   }
 
   public void reconnect() throws DBException {
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     if (jedis != null) {
       try {
         ((Jedis) jedis).close();
@@ -113,6 +114,8 @@ public class RedisClient extends DB {
         throw new DBException("Closing connection failed." + e);
       }
     }
+    System.out.println("[" + LocalDateTime.now().format(formatter) + "] Reconnecting to Redis");
+    // jedis=null;
     init();
   }
 
@@ -148,6 +151,7 @@ public class RedisClient extends DB {
 
 
   public void init() throws DBException {
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     Properties props = getProperties();
     int port;
 
@@ -158,6 +162,7 @@ public class RedisClient extends DB {
       port = Protocol.DEFAULT_PORT;
     }
     String host = props.getProperty(HOST_PROPERTY);
+    System.out.println("[" + LocalDateTime.now().format(formatter) + "] Redis host: " + host);
 
     boolean clusterEnabled = Boolean.parseBoolean(props.getProperty(CLUSTER_PROPERTY));
     if (clusterEnabled) {
