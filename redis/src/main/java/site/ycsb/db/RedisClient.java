@@ -58,6 +58,10 @@ import java.time.format.DateTimeFormatter;
 public class RedisClient extends DB {
 
   private JedisCommands jedis;
+  private String host;
+  private String redisTimeout;
+  private String portString;
+  private int port;
   // private JedisCommands jedis1;
   // private JedisCommands jedis2;
 
@@ -108,11 +112,19 @@ public class RedisClient extends DB {
   }
 
   public void reconnect() throws DBException {
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     System.out.println("Reconnecting to Redis server...");
     cleanup();
-    init();
-    // ((Jedis) jedis).close();
-    // ((Jedis) jedis).connect();
+    if (redisTimeout != null){
+      System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with timeout: " + redisTimeout);
+      jedis = new Jedis(host, port, Integer.parseInt(redisTimeout));
+      // jedis2 = new Jedis(host2, port, Integer.parseInt(redisTimeout));
+    } else {
+      System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with: " + host+":"+portString);
+      jedis = new Jedis(host, port);
+      // jedis2 = new Jedis(host2, port);
+    }
+    ((Jedis) jedis).connect();
   }
 
   // private<T> T runWithReconnect(RedisCommand<T> command) {
@@ -149,15 +161,14 @@ public class RedisClient extends DB {
   public void init() throws DBException {
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     Properties props = getProperties();
-    int port;
 
-    String portString = props.getProperty(PORT_PROPERTY);
+    portString = props.getProperty(PORT_PROPERTY);
     if (portString != null) {
       port = Integer.parseInt(portString);
     } else {
       port = Protocol.DEFAULT_PORT;
     }
-    String host = props.getProperty(HOST_PROPERTY);
+    host = props.getProperty(HOST_PROPERTY);
     System.out.println("[" + LocalDateTime.now().format(formatter) + "] Redis host: " + host);
 
     String host2 = props.getProperty(HOST2_PROPERTY);
@@ -168,7 +179,7 @@ public class RedisClient extends DB {
       jedisClusterNodes.add(new HostAndPort(host, port));
       jedis = new JedisCluster(jedisClusterNodes);
     } else {
-      String redisTimeout = props.getProperty(TIMEOUT_PROPERTY);
+      redisTimeout = props.getProperty(TIMEOUT_PROPERTY);
       if (redisTimeout != null){
         System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with timeout: " + redisTimeout);
         jedis = new Jedis(host, port, Integer.parseInt(redisTimeout));
