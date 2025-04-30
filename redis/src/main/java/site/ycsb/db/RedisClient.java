@@ -98,7 +98,6 @@ public class RedisClient extends DB {
           try {
             reconnect();
             System.out.println("[" + LocalDateTime.now().format(formatter) + "] Redis connection Successful");
-            i = -1;
           } catch (Exception ie) {
             System.err.println("[" + LocalDateTime.now().format(formatter) + "] Redis reconnect failed: " + ie);
           }
@@ -109,13 +108,11 @@ public class RedisClient extends DB {
   }
 
   public void reconnect() throws DBException {
-    // JedisCommands temp = jedis1;
-    // jedis1 = jedis2;
-    // jedis2 = temp;
-
-    // jedis = jedis1;
     System.out.println("Reconnecting to Redis server...");
-    ((Jedis) jedis).connect();
+    cleanup();
+    init();
+    // ((Jedis) jedis).close();
+    // ((Jedis) jedis).connect();
   }
 
   // private<T> T runWithReconnect(RedisCommand<T> command) {
