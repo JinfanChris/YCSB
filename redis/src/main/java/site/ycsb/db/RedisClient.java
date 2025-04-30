@@ -76,7 +76,7 @@ public class RedisClient extends DB {
 
 
   private static final int MAX_RETRIES = 200;
-  private static final long RETRY_DELAY_MS = 500;
+  private static final long RETRY_DELAY_MS = 50;
 
   @FunctionalInterface
   private interface RedisCommand<T> {
@@ -92,7 +92,8 @@ public class RedisClient extends DB {
         System.err.println("[" + LocalDateTime.now().format(formatter) +
             "] Redis operation failed: " + e + ". Retrying " + (i + 1) + "/" + MAX_RETRIES);
         try {
-          Thread.sleep(RETRY_DELAY_MS);
+          long delay = RETRY_DELAY_MS * (i + 1);
+          Thread.sleep(delay);
         } catch (InterruptedException ie) {
           Thread.currentThread().interrupt();
           throw new RuntimeException("Thread interrupted", ie);
@@ -118,11 +119,9 @@ public class RedisClient extends DB {
     if (redisTimeout != null){
       System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with timeout: " + redisTimeout);
       jedis = new Jedis(host, port, Integer.parseInt(redisTimeout));
-      // jedis2 = new Jedis(host2, port, Integer.parseInt(redisTimeout));
     } else {
       System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with: " + host+":"+portString);
       jedis = new Jedis(host, port);
-      // jedis2 = new Jedis(host2, port);
     }
     ((Jedis) jedis).connect();
   }
