@@ -38,6 +38,8 @@ import redis.clients.jedis.Protocol;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.HashSet;
@@ -60,6 +62,7 @@ import java.net.UnknownHostException;
  */
 public class RedisClient extends DB {
 
+  private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
   private JedisCommands jedis;
   private String host;
   private String redisTimeout;
@@ -87,12 +90,11 @@ public class RedisClient extends DB {
   }
 
   private <T> T runWithReconnect(RedisCommand<T> command) {
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     for (int i = 0; i < MAX_RETRIES; i++) {
       try {
         return command.run(jedis);
       } catch (Exception e) {
-        System.err.println("[" + LocalDateTime.now().format(formatter) +
+        System.err.println("[" + LocalDateTime.now().format(FORMATTER) +
             "] Redis operation failed: " + e + ". Retrying " + (i + 1) + "/" + MAX_RETRIES);
         try {
           long delay = RETRY_DELAY_MS * (i + 1);
@@ -105,9 +107,9 @@ public class RedisClient extends DB {
         if (jedis instanceof Jedis) {
           try {
             reconnect();
-            System.out.println("[" + LocalDateTime.now().format(formatter) + "] Redis connection Successful");
+            System.out.println("[" + LocalDateTime.now().format(FORMATTER) + "] Redis connection Successful");
           } catch (Exception ie) {
-            System.err.println("[" + LocalDateTime.now().format(formatter) + "] Redis reconnect failed: " + ie);
+            System.err.println("[" + LocalDateTime.now().format(FORMATTER) + "] Redis reconnect failed: " + ie);
           }
         }
       }
@@ -115,11 +117,53 @@ public class RedisClient extends DB {
     throw new RuntimeException("Redis Command Failed after max retries reached");
   }
 
+
+  /**
+   * Attempts to resolve the hostname using the /etc/hosts file.
+   * Returns the IP if a match is found, or null otherwise.
+   */
+  public static String resolveFromEtcHosts(String hostname) {
+    try (BufferedReader reader = new BufferedReader(new FileReader("/etc/hosts"))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        // Remove comments and trim the line.
+        line = line.split("#")[0].trim();
+        if (line.isEmpty()) {
+          continue;
+        }
+        // Split line into tokens (IP address followed by one or more hostnames)
+        String[] tokens = line.split("\\s+");
+        if (tokens.length < 2) {
+          continue;
+        }
+        String ip = tokens[0];
+        System.out.println("[" + LocalDateTime.now().format(FORMATTER) + "] /etc/hosts: " + line);
+        // Check each token for a hostname match (case-insensitive)
+        for (int i = 1; i < tokens.length; i++) {
+          System.out.println("[" + LocalDateTime.now().format(FORMATTER) + "] /etc/hosts: " + tokens[i] + " --> " + ip);
+          if (hostname.equalsIgnoreCase(tokens[i])) {
+            return ip;
+          }
+        }
+      }
+    } catch (IOException e) {
+      System.err.println("Error reading /etc/hosts: " + e.getMessage());
+    }
+    return null;
+  }
+
   public static String resolveIfHostname(String host) {
     // Check if it's already an IP address
     if (host.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) {
       return host;
     }
+
+    String ip = resolveFromEtcHosts(host);
+    if (ip != null) {
+      System.out.println("[" + LocalDateTime.now().format(FORMATTER) + "] from /etc/hosts: " + host + " --> " + ip);
+      return ip;
+    }
+
     try {
       InetAddress resolved = InetAddress.getByName(host);
       return resolved.getHostAddress();  // Return resolved IP
@@ -130,16 +174,15 @@ public class RedisClient extends DB {
   }
 
   public void reconnect() throws DBException {
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     System.out.println("Reconnecting to Redis server...");
     cleanup();
     String rhost = resolveIfHostname(host);
-    System.out.println("[" + LocalDateTime.now().format(formatter) + "] Redis host: " + host + " --> " + rhost);
+    System.out.println("[" + LocalDateTime.now().format(FORMATTER) + "] Redis host: " + host + " --> " + rhost);
     if (redisTimeout != null){
-      System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with timeout: " + redisTimeout);
+      System.out.println("[" + LocalDateTime.now().format(FORMATTER) + "] init jedis with timeout: " + redisTimeout);
       jedis = new Jedis(rhost, port, Integer.parseInt(redisTimeout));
     } else {
-      System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with: " + host+":"+portString);
+      System.out.println("[" + LocalDateTime.now().format(FORMATTER) + "] init jedis with: " + host+":"+portString);
       jedis = new Jedis(rhost, port);
     }
     ((Jedis) jedis).connect();
@@ -177,7 +220,6 @@ public class RedisClient extends DB {
 
 
   public void init() throws DBException {
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     Properties props = getProperties();
 
     portString = props.getProperty(PORT_PROPERTY);
@@ -187,7 +229,7 @@ public class RedisClient extends DB {
       port = Protocol.DEFAULT_PORT;
     }
     host = props.getProperty(HOST_PROPERTY);
-    System.out.println("[" + LocalDateTime.now().format(formatter) + "] Redis host: " + host);
+    System.out.println("[" + LocalDateTime.now().format(FORMATTER) + "] Redis host: " + host);
 
     String host2 = props.getProperty(HOST2_PROPERTY);
 
@@ -199,13 +241,13 @@ public class RedisClient extends DB {
     } else {
       redisTimeout = props.getProperty(TIMEOUT_PROPERTY);
       String rhost = resolveIfHostname(host);
-      System.out.println("[" + LocalDateTime.now().format(formatter) + "] Redis host: " + host + " --> " + rhost);
+      System.out.println("[" + LocalDateTime.now().format(FORMATTER) + "] Redis host: " + host + " --> " + rhost);
       if (redisTimeout != null){
-        System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with timeout: " + redisTimeout);
+        System.out.println("[" + LocalDateTime.now().format(FORMATTER) + "] init jedis with timeout: " + redisTimeout);
         jedis = new Jedis(host, port, Integer.parseInt(redisTimeout));
         // jedis2 = new Jedis(host2, port, Integer.parseInt(redisTimeout));
       } else {
-        System.out.println("[" + LocalDateTime.now().format(formatter) + "] init jedis with: " + host+":"+portString);
+        System.out.println("[" + LocalDateTime.now().format(FORMATTER) + "] init jedis with: " + host+":"+portString);
         jedis = new Jedis(host, port);
         // jedis2 = new Jedis(host2, port);
       }
